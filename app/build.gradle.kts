@@ -7,6 +7,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
+        buildConfigField("String", "APP_ID", "\"ef6b692a31173fe74cd7b15eb5e72889\"")
         applicationId = "com.example.myworkmanager"
         minSdk = 24
         targetSdk = 34
@@ -14,6 +15,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
     }
 
     buildTypes {
@@ -37,6 +43,9 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.work.runtime)
+    implementation(libs.gson)
+    implementation(libs.android.async.http)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
