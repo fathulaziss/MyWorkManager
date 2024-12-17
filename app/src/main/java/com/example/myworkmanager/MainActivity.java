@@ -11,17 +11,23 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.Observer;
+import androidx.work.Constraints;
 import androidx.work.Data;
+import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 
 import com.example.myworkmanager.databinding.ActivityMainBinding;
 
+import java.util.concurrent.TimeUnit;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private ActivityMainBinding binding;
     private WorkManager workManager;
+    private PeriodicWorkRequest periodicWorkRequest;
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.RequestPermission(),
@@ -49,12 +55,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         workManager = WorkManager.getInstance(this);
         binding.btnOneTimeTask.setOnClickListener(this);
+        binding.btnPeriodicTask.setOnClickListener(this);
+        binding.btnCancelTask.setOnClickListener(this);
     }
 
     @Override
     public void onClick(View view) {
         if (view.getId() == R.id.btnOneTimeTask) {
             startOneTimeTask();
+        } else if (view.getId() == R.id.btnPeriodicTask) {
+            startPeriodicTask();
+        } else if (view.getId() == R.id.btnCancelTask) {
+            cancelPeriodicTask();
         }
     }
 
@@ -66,9 +78,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .putString(MyWorker.EXTRA_CITY, binding.editCity.getText().toString())
                 .build();
 
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+
         // Build the one-time work request
         OneTimeWorkRequest oneTimeWorkRequest = new OneTimeWorkRequest.Builder(MyWorker.class)
                 .setInputData(data)
+                .setConstraints(constraints)
                 .build();
 
         // Enqueue the work request
@@ -85,5 +102,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     }
                 });
+    }
+
+    private void startPeriodicTask() {
+        binding.textStatus.setText(getString(R.string.status));
+
+        Data data = new Data.Builder()
+                .putString(MyWorker.EXTRA_CITY, binding.editCity.getText().toString())
+                .build();
+
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+
+        periodicWorkRequest = new PeriodicWorkRequest.Builder(MyWorker.class, 15, TimeUnit.MINUTES)
+                .setInputData(data)
+                .setConstraints(constraints)
+                .build();
+
+        workManager.enqueue(periodicWorkRequest);
+
+        workManager.getWorkInfoByIdLiveData(periodicWorkRequest.getId())
+                .observe(MainActivity.this, workInfo -> {
+                    String status = workInfo.getState().name();
+                    binding.textStatus.append("\n"+status);
+                    binding.btnCancelTask.setEnabled(false);
+                    if (workInfo.getState() == WorkInfo.State.ENQUEUED){
+                        binding.btnCancelTask.setEnabled(true);
+                    }
+                });
+    }
+
+    private void cancelPeriodicTask() {
+        workManager.cancelWorkById(periodicWorkRequest.getId());
     }
 }
